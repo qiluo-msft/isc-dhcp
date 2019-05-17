@@ -236,6 +236,7 @@ struct iface_conf_list {
 struct iface_info {
 	char name[IF_NAMESIZE+1];	/* name of the interface, e.g. "bge0" */
 	struct sockaddr_storage addr;	/* address information */
+	struct sockaddr_storage netmask;	/* netmask information */
 	isc_uint64_t flags;		/* interface flags, e.g. IFF_LOOPBACK */
 };
 
@@ -367,6 +368,17 @@ next_iface(struct iface_info *info, int *err, struct iface_conf_list *ifaces) {
 	}
 	info->flags = tmp.lifr_flags;
 
+	if (ioctl(ifaces->sock, SIOCGIFNETMASK, &tmp) < 0) {
+		if (errno == EADDRNOTAVAIL) {
+		continue;
+		}
+		log_error("Error getting netmask "
+			"for '%s'; %m", name);
+		*err = 1;
+		return 0;
+	}
+	memcpy(&info->netmask, &tmp.ifr_netmask, sizeof(tmp.ifr_netmask));
+
 	ifaces->next++;
 	*err = 0;
 	return 1;
@@ -410,6 +422,7 @@ struct iface_conf_list {
 struct iface_info {
 	char name[IFNAMSIZ];		/* name of the interface, e.g. "bge0" */
 	struct sockaddr_storage addr;	/* address information */
+	struct sockaddr_storage netmask;	/* netmask information */
 	isc_uint64_t flags;		/* interface flags, e.g. IFF_LOOPBACK */
 };
 
@@ -487,7 +500,8 @@ end_iface_scan(struct iface_conf_list *ifaces) {
 /* XXX: perhaps create drealloc() rather than do it manually */
 void
 add_ipv4_addr_to_interface(struct interface_info *iface, 
-			   const struct in_addr *addr) {
+			   const struct in_addr *addr,
+			   const struct in_addr *netmask) {
 	/*
 	 * We don't expect a lot of addresses per IPv4 interface, so
 	 * we use 4, as our "chunk size" for collecting addresses.
@@ -496,6 +510,11 @@ add_ipv4_addr_to_interface(struct interface_info *iface,
 		iface->addresses = dmalloc(4 * sizeof(struct in_addr), MDL);
 		if (iface->addresses == NULL) {
 			log_fatal("Out of memory saving IPv4 address "
+			          "on interface.");
+		}
+		iface->netmasks = dmalloc(4 * sizeof(struct in_addr), MDL);
+		if (iface->netmasks == NULL) {
+			log_fatal("Out of memory saving IPv4 netmask "
 			          "on interface.");
 		}
 		iface->address_count = 0;
@@ -515,9 +534,23 @@ add_ipv4_addr_to_interface(struct interface_info *iface,
 		       iface->address_max * sizeof(struct in_addr));
 		dfree(iface->addresses, MDL);
 		iface->addresses = tmp;
+
+		tmp = dmalloc(new_max * sizeof(struct in_addr), MDL);
+		if (tmp == NULL) {
+			log_fatal("Out of memory saving IPv4 netmask "
+				  "on interface.");
+		}
+		memcpy(tmp,
+		       iface->netmasks,
+		       iface->address_max * sizeof(struct in_addr));
+		dfree(iface->netmasks, MDL);
+		iface->netmasks = tmp;
+
 		iface->address_max = new_max;
 	}
-	iface->addresses[iface->address_count++] = *addr;
+	iface->addresses[iface->address_count] = *addr;
+	iface->netmasks[iface->address_count] = *netmask;
+	iface->address_count++;
 }
 
 #ifdef DHCPv6
@@ -656,6 +689,7 @@ discover_interfaces(int state) {
 		if ((info.addr.ss_family == AF_INET) && 
 		    (local_family == AF_INET)) {
 			struct sockaddr_in *a = (struct sockaddr_in*)&info.addr;
+			struct sockaddr_in *n = (struct sockaddr_in*)&info.netmask;
 			struct iaddr addr;
 
 			/* We don't want the loopback interface. */
@@ -670,7 +704,7 @@ discover_interfaces(int state) {
 			if (a->sin_addr.s_addr != htonl(INADDR_ANY))
 				tmp->configured = 1;
 
-			add_ipv4_addr_to_interface(tmp, &a->sin_addr);
+			add_ipv4_addr_to_interface(tmp, &a->sin_addr, &n->sin_addr);
 
 			/* invoke the setup hook */
 			addr.len = 4;

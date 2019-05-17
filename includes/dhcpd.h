@@ -1365,6 +1365,9 @@ struct interface_info {
 	struct in_addr *addresses;	/* Addresses associated with this
 					 * interface.
 					 */
+	struct in_addr *netmasks;	/* Netmask associated with this
+					 * interface.
+					 */
 	int address_count;		/* Number of addresses stored. */
 	int address_max;		/* Size of addresses buffer. */
 	struct in6_addr *v6addresses;	/* IPv6 addresses associated with
