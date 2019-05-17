@@ -47,37 +47,6 @@
 #define BYTE_ORDER DHCP_BYTE_ORDER
 #endif /* BYTE_ORDER */
 
-/* Porting::
-
-   If you add a new network API, you must add a check for it below: */
-
-#if !defined (USE_SOCKETS) && \
-    !defined (USE_SOCKET_SEND) && \
-    !defined (USE_SOCKET_RECEIVE) && \
-    !defined (USE_RAW_SOCKETS) && \
-    !defined (USE_RAW_SEND) && \
-    !defined (USE_SOCKET_RECEIVE) && \
-    !defined (USE_BPF) && \
-    !defined (USE_BPF_SEND) && \
-    !defined (USE_BPF_RECEIVE) && \
-    !defined (USE_LPF) && \
-    !defined (USE_LPF_SEND) && \
-    !defined (USE_LPF_RECEIVE) && \
-    !defined (USE_NIT) && \
-    !defined (USE_NIT_SEND) && \
-    !defined (USE_NIT_RECEIVE) && \
-    !defined (USE_DLPI_SEND) && \
-    !defined (USE_DLPI_RECEIVE)
-/* Determine default socket API to USE. */
-# if defined(HAVE_BPF)
-#  define USE_BPF 1
-# elif defined(HAVE_LPF)
-#  define USE_LPF 1
-# elif defined(HAVE_DLPI)
-#  define USE_DLPI 1
-# endif
-#endif
-
 #if !defined (TIME_MAX)
 # define TIME_MAX 2147483647
 #endif
@@ -88,94 +57,6 @@
   extern int isc_print_vsnprintf(char *, size_t, const char *, va_list ap);
 # define snprintf  isc_print_snprintf
 # define vsnprintf isc_print_vsnprintf
-#endif
-
-/* Porting::
-
-   If you add a new network API, and have it set up so that it can be
-   used for sending or receiving, but doesn't have to be used for both,
-   then set up an ifdef like the ones below: */
-
-#ifdef USE_SOCKETS
-#  define USE_SOCKET_SEND
-#  define USE_SOCKET_RECEIVE
-#  if defined(HAVE_DLPI) && !defined(sun) && !defined(USE_V4_PKTINFO)
-#    define USE_DLPI_HWADDR
-#  elif defined(HAVE_LPF)
-#    define USE_LPF_HWADDR
-#  elif defined(HAVE_BPF)
-#    define USE_BPF_HWADDR
-#  endif
-#endif
-
-#ifdef USE_RAW_SOCKETS
-#  define USE_RAW_SEND
-#  define USE_SOCKET_RECEIVE
-#endif
-
-#ifdef USE_BPF
-#  define USE_BPF_SEND
-#  define USE_BPF_RECEIVE
-#endif
-
-#ifdef USE_LPF
-#  define USE_LPF_SEND
-#  define USE_LPF_RECEIVE
-#endif
-
-#ifdef USE_NIT
-#  define USE_NIT_SEND
-#  define USE_NIT_RECEIVE
-#endif
-
-#ifdef USE_DLPI
-#  define USE_DLPI_SEND
-#  define USE_DLPI_RECEIVE
-#endif
-
-#ifdef USE_UPF
-#  define USE_UPF_SEND
-#  define USE_UPF_RECEIVE
-#endif
-
-/* Porting::
-
-   If you add support for sending packets directly out an interface,
-   and your support does not do ARP or routing, you must use a fallback
-   mechanism to deal with packets that need to be sent to routers.
-   Currently, all low-level packet interfaces use BSD sockets as a
-   fallback. */
-
-#if defined (USE_BPF_SEND) || defined (USE_NIT_SEND) || \
-    defined (USE_DLPI_SEND) || defined (USE_UPF_SEND) || \
-    defined (USE_LPF_SEND) || \
-    (defined (USE_SOCKET_SEND) && defined (HAVE_SO_BINDTODEVICE))
-#  define USE_SOCKET_FALLBACK
-#  define USE_FALLBACK
-#endif
-
-/* Porting::
-
-   If you add support for sending packets directly out an interface
-   and need to be able to assemble packets, add the USE_XXX_SEND
-   definition for your interface to the list tested below. */
-
-#if defined (USE_RAW_SEND) || defined (USE_BPF_SEND) || \
-		defined (USE_NIT_SEND) || defined (USE_UPF_SEND) || \
-		defined (USE_DLPI_SEND) || defined (USE_LPF_SEND)
-#  define PACKET_ASSEMBLY
-#endif
-
-/* Porting::
-
-   If you add support for receiving packets directly from an interface
-   and need to be able to decode raw packets, add the USE_XXX_RECEIVE
-   definition for your interface to the list tested below. */
-
-#if defined (USE_RAW_RECEIVE) || defined (USE_BPF_SEND) || \
-		defined (USE_NIT_RECEIVE) || defined (USE_UPF_RECEIVE) || \
-		defined (USE_DLPI_RECEIVE) || defined (USE_LPF_RECEIVE)
-#  define PACKET_DECODING
 #endif
 
 /* If we don't have a DLPI packet filter, we have to filter in userland.
@@ -286,5 +167,125 @@
 #if !defined (STDERR_FILENO)
 # define STDERR_FILENO 2
 #endif
+
+/* Porting::
+
+   If you add a new network API, you must add a check for it below: */
+
+#if !defined (USE_SOCKETS) && \
+    !defined (USE_SOCKET_SEND) && \
+    !defined (USE_SOCKET_RECEIVE) && \
+    !defined (USE_RAW_SOCKETS) && \
+    !defined (USE_RAW_SEND) && \
+    !defined (USE_SOCKET_RECEIVE) && \
+    !defined (USE_BPF) && \
+    !defined (USE_BPF_SEND) && \
+    !defined (USE_BPF_RECEIVE) && \
+    !defined (USE_LPF) && \
+    !defined (USE_LPF_SEND) && \
+    !defined (USE_LPF_RECEIVE) && \
+    !defined (USE_NIT) && \
+    !defined (USE_NIT_SEND) && \
+    !defined (USE_NIT_RECEIVE) && \
+    !defined (USE_DLPI_SEND) && \
+    !defined (USE_DLPI_RECEIVE)
+/* Determine default socket API to USE. */
+# if defined(HAVE_BPF)
+#  define USE_BPF 1
+# elif defined(HAVE_LPF)
+#  define USE_LPF 1
+# elif defined(HAVE_DLPI)
+#  define USE_DLPI 1
+# endif
+#endif
+
+/* Porting::
+
+   If you add a new network API, and have it set up so that it can be
+   used for sending or receiving, but doesn't have to be used for both,
+   then set up an ifdef like the ones below: */
+
+#ifdef USE_SOCKETS
+#  define USE_SOCKET_SEND
+#  define USE_SOCKET_RECEIVE
+#  if defined(HAVE_DLPI) && !defined(sun) && !defined(USE_V4_PKTINFO)
+#    define USE_DLPI_HWADDR
+#  elif defined(HAVE_LPF)
+#    define USE_LPF_HWADDR
+#  elif defined(HAVE_BPF)
+#    define USE_BPF_HWADDR
+#  endif
+#endif
+
+#ifdef USE_RAW_SOCKETS
+#  define USE_RAW_SEND
+#  define USE_SOCKET_RECEIVE
+#endif
+
+#ifdef USE_BPF
+#  define USE_BPF_SEND
+#  define USE_BPF_RECEIVE
+#endif
+
+#ifdef USE_LPF
+#  define USE_LPF_SEND
+#  define USE_LPF_RECEIVE
+#endif
+
+#ifdef USE_NIT
+#  define USE_NIT_SEND
+#  define USE_NIT_RECEIVE
+#endif
+
+#ifdef USE_DLPI
+#  define USE_DLPI_SEND
+#  define USE_DLPI_RECEIVE
+#endif
+
+#ifdef USE_UPF
+#  define USE_UPF_SEND
+#  define USE_UPF_RECEIVE
+#endif
+
+/* Porting::
+
+   If you add support for sending packets directly out an interface,
+   and your support does not do ARP or routing, you must use a fallback
+   mechanism to deal with packets that need to be sent to routers.
+   Currently, all low-level packet interfaces use BSD sockets as a
+   fallback. */
+
+#if defined (USE_BPF_SEND) || defined (USE_NIT_SEND) || \
+    defined (USE_DLPI_SEND) || defined (USE_UPF_SEND) || \
+    defined (USE_LPF_SEND) || \
+    (defined (USE_SOCKET_SEND) && defined (HAVE_SO_BINDTODEVICE))
+#  define USE_SOCKET_FALLBACK
+#  define USE_FALLBACK
+#endif
+
+/* Porting::
+
+   If you add support for sending packets directly out an interface
+   and need to be able to assemble packets, add the USE_XXX_SEND
+   definition for your interface to the list tested below. */
+
+#if defined (USE_RAW_SEND) || defined (USE_BPF_SEND) || \
+		defined (USE_NIT_SEND) || defined (USE_UPF_SEND) || \
+		defined (USE_DLPI_SEND) || defined (USE_LPF_SEND)
+#  define PACKET_ASSEMBLY
+#endif
+
+/* Porting::
+
+   If you add support for receiving packets directly from an interface
+   and need to be able to decode raw packets, add the USE_XXX_RECEIVE
+   definition for your interface to the list tested below. */
+
+#if defined (USE_RAW_RECEIVE) || defined (USE_BPF_SEND) || \
+		defined (USE_NIT_RECEIVE) || defined (USE_UPF_RECEIVE) || \
+		defined (USE_DLPI_RECEIVE) || defined (USE_LPF_RECEIVE)
+#  define PACKET_DECODING
+#endif
+
 
 #endif /* __ISC_DHCP_OSDEP_H__ */
