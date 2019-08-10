@@ -1,3 +1,12 @@
+isc-dhcp (4.4.1-2) unstable; urgency=medium
+
+  * Set initial address to 0.0.0.0 on hurd (closes: #875566).
+    - Thanks to Joan Lledó.
+  * Update IPv4 address lifetimes on renew (closes: #834532).
+    - Thanks to Sven Ulland.
+
+ -- Michael Gilbert <mgilbert@debian.org>  Tue, 11 Dec 2018 03:55:12 +0000
+
 isc-dhcp (4.4.1-1) experimental; urgency=medium
 
   * New upstream release.
