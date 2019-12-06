@@ -665,7 +665,8 @@ discover_interfaces(int state) {
 		      info.flags & IFF_LOOPBACK ||
 		      info.flags & IFF_POINTOPOINT) && !tmp) ||
 		    (!(info.flags & IFF_UP) &&
-		     state != DISCOVER_UNCONFIGURED))
+		     state != DISCOVER_UNCONFIGURED &&
+		     state != DISCOVER_RELAY))
 			continue;
 		
 		/* If there isn't already an interface by this name,
