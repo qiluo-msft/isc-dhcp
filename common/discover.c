@@ -479,6 +479,7 @@ next_iface(struct iface_info *info, int *err, struct iface_conf_list *ifaces) {
 		sa_len = ifaces->next->ifa_addr->sa_len;
 #endif
 		memcpy(&info->addr, ifaces->next->ifa_addr, sa_len);
+		memcpy(&info->netmask, ifaces->next->ifa_netmask, sa_len);
 	}
 	info->flags = ifaces->next->ifa_flags;
 	ifaces->next = ifaces->next->ifa_next;
