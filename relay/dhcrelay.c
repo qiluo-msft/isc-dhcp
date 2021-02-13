@@ -30,6 +30,7 @@
 #include <syslog.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <sys/ioctl.h>
 #include <isc/file.h>
 
 TIME default_lease_time = 43200; /* 12 hours... */
@@ -996,20 +997,95 @@ do_relay4(struct interface_info *ip, struct dhcp_packet *packet,
 	/* Otherwise, it's a BOOTREQUEST, so forward it to all the
 	   servers. */
 	for (sp = servers; sp; sp = sp->next) {
-		if (send_packet((fallback_interface
-				 ? fallback_interface : interfaces),
-				 NULL, packet, length, ip->addresses[0],
-				 &sp->to, NULL) < 0) {
-			++client_packet_errors;
+		int packet_relay_attempted = 0;
+
+		log_debug("Server IP: %s", inet_ntoa(sp->to.sin_addr));
+
+		/* If the server's IP address is the broadcast IP of one
+		   of our interfaces, we send it directly on that interface's
+		   socket, because the kernel will drop directed broadcast
+		   packets if we send on the fallback. */
+		for (out = interfaces; out; out = out->next) {
+			int i = 0;
+
+			// Only relay BOOTREQUEST on upstream interfaces
+			if (!(out->flags & INTERFACE_UPSTREAM))
+				continue;
+
+			if (!out->addresses || !out->netmasks)
+				continue;
+
+			for (i = 0; i < out->address_count; i++) {
+				struct in_addr bcast_addr;
+
+				log_debug("Iface %s addr: %s", out->name, inet_ntoa(out->addresses[i]));
+				log_debug("Iface %s netmask: %s", out->name, inet_ntoa(out->netmasks[i]));
+
+				// Broadcast = ip_addr | ~netmask
+				bcast_addr.s_addr = out->addresses[i].s_addr | ~out->netmasks[i].s_addr;
+				log_debug("Iface %s broadcast: %s", out->name, inet_ntoa(bcast_addr));
+
+				if (sp->to.sin_addr.s_addr == bcast_addr.s_addr) {
+					log_debug("Packet destined for broadcast IP of %s", out->name);
+					if (send_packet(out, NULL, packet,
+							length, ip->addresses[0],&sp->to, NULL) < 0) {
+						++client_packet_errors;
+					} else {
+						log_debug("Forwarded BOOTREQUEST for %s to %s on interface %s",
+						       print_hw_addr(packet->htype, packet->hlen,
+								      packet->chaddr),
+						       inet_ntoa(sp->to.sin_addr), out->name);
+
+						++client_packets_relayed;
+					}
+
+					packet_relay_attempted = 1;
+
+					break;
+				}
+			}
+
+			if (packet_relay_attempted)
+				break;
+		}
+
+		if (packet_relay_attempted)
+			continue;
+
+		/* Otherwise, if we have a fallback interface, we send the packet
+		   on it. If not, we send the packet out all interfaces.*/
+		if (fallback_interface) {
+			if (send_packet(fallback_interface, NULL, packet,
+					length, ip->addresses[0],&sp->to, NULL) < 0) {
+				++client_packet_errors;
+			} else {
+				log_debug("Forwarded BOOTREQUEST for %s to %s on fallback interface",
+				       print_hw_addr(packet->htype, packet->hlen,
+						      packet->chaddr),
+				       inet_ntoa(sp->to.sin_addr));
+
+				++client_packets_relayed;
+			}
 		} else {
-			log_debug("Forwarded BOOTREQUEST for %s to %s",
-			       print_hw_addr(packet->htype, packet->hlen,
-					      packet->chaddr),
-			       inet_ntoa(sp->to.sin_addr));
-			++client_packets_relayed;
+			for (out = interfaces; out; out = out->next) {
+				// Only relay BOOTREQUEST on upstream interfaces
+				if (!(out->flags & INTERFACE_UPSTREAM))
+					continue;
+
+				if (send_packet(out, NULL, packet,
+						length, ip->addresses[0],&sp->to, NULL) < 0) {
+					++client_packet_errors;
+				} else {
+					log_debug("Forwarded BOOTREQUEST for %s to %s on interface %s",
+					       print_hw_addr(packet->htype, packet->hlen,
+							      packet->chaddr),
+					       inet_ntoa(sp->to.sin_addr), out->name);
+
+					++client_packets_relayed;
+				}
+			}
 		}
 	}
-				 
 }
 
 /* Strip any Relay Agent Information options from the DHCP packet
