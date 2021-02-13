@@ -38,9 +38,9 @@
 #include <syslog.h>
 
 #ifdef DEBUG
-int log_perror = -1;
-#else
 int log_perror = 1;
+#else
+int log_perror = 0;
 #endif
 void (*log_cleanup) (void);
 
