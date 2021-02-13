@@ -24,7 +24,7 @@ CFLAGS+=-D_PATH_DHCLIENT_CONF='\"/etc/dhcp/dhclient.conf\"'
 CFLAGS+=-D_PATH_DHCLIENT_DB='\"$(LEASE_PATH)/dhclient.leases\"'
 CFLAGS+=-D_PATH_DHCLIENT6_DB='\"$(LEASE_PATH)/dhclient6.leases\"'
 
-CONFFLAGS=--prefix=/usr --with-libbind=/usr --enable-log-pid --enable-paranoia
+CONFFLAGS=--prefix=/usr --with-libbind=/usr --enable-log-pid --enable-paranoia --enable-use-sockets
 
 # cross-architecture building
 ifneq ($(DEB_HOST_GNU_TYPE),$(DEB_BUILD_GNU_TYPE))
