@@ -1527,7 +1527,7 @@ add_relay_agent_options(struct interface_info *ip, struct dhcp_packet *packet,
 	/* Commence processing after the cookie. */
 	sp = op = &packet->options[4];
 
-	while (op < max) {
+	while ((op < max) && (op < (((u_int8_t *)packet) + length))) {
 		switch(*op) {
 			/* Skip padding... */
 		      case DHO_PAD:
